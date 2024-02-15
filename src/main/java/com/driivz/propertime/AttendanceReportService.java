@@ -56,13 +56,13 @@ public class AttendanceReportService {
     public List<InfoDto> saveTimePeriod(AttendancePeriodDto attendancePeriodDto, String sessionCookie) throws IOException {
         List<InfoDto> errorList = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-        LocalDate startDate = LocalDate.parse(attendancePeriodDto.getStartDate(), formatter);
-        LocalDate endDate = LocalDate.parse(attendancePeriodDto.getEndDate(), formatter);
+        LocalDate attendanceStartDate = LocalDate.parse(attendancePeriodDto.getStartDate(), formatter);
+        LocalDate attendanceEndDate = LocalDate.parse(attendancePeriodDto.getEndDate(), formatter);
 
-        int numOfDaysBetween = Long.valueOf(ChronoUnit.DAYS.between(startDate, endDate) + 1).intValue();
+        int numOfDaysBetween = Long.valueOf(ChronoUnit.DAYS.between(attendanceStartDate, attendanceEndDate) + 1).intValue();
         List<LocalDate> attendanceDays = IntStream.iterate(0, i -> i + 1)
                 .limit(numOfDaysBetween)
-                .mapToObj(startDate::plusDays)
+                .mapToObj(attendanceStartDate::plusDays)
                 .filter(it -> it.getDayOfWeek() != DayOfWeek.FRIDAY && it.getDayOfWeek() != DayOfWeek.SATURDAY)
                 .collect(Collectors.toList());
 
@@ -74,9 +74,11 @@ public class AttendanceReportService {
             request.addHeader("Content-Type", "application/json");
             request.addHeader("Cookie", sessionCookie);
             String dayAsString = attendanceDays.get(i).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            String dailyStartDate = dailyTimeRange.get(i % dailyTimeRange.size()).getFirst();
+            String dailyEndDate = dailyTimeRange.get(i % dailyTimeRange.size()).getSecond();
 
             PunchDto punchInDto = PunchDto.builder()
-                    .time(dailyTimeRange.get(i % attendanceDays.size()).getFirst())
+                    .time(dailyStartDate)
                     .date(dayAsString)
                     .kind("in")
                     .ignore_locked(null)
@@ -92,7 +94,7 @@ public class AttendanceReportService {
             }
 
             PunchDto punchOutDto = PunchDto.builder()
-                    .time(dailyTimeRange.get(i % attendanceDays.size()).getSecond())
+                    .time(dailyEndDate)
                     .date(dayAsString)
                     .kind("out")
                     .ignore_locked(null)
@@ -111,13 +113,13 @@ public class AttendanceReportService {
 
             TaskEntryDto taskEntryDto = TaskEntryDto.builder()
                 .client_id(CLIENT_ID)
-                .end_time(dailyTimeRange.get(i % attendanceDays.size()).getSecond())
+                .end_time(dailyEndDate)
                 .expenses(List.of())
                 .id("")
                 .is_dirty(true)
                 .project_id(PROJECT_ID)
                 .remarks("")
-                .start_time(dailyTimeRange.get(i % attendanceDays.size()).getFirst())
+                .start_time(dailyStartDate)
                 .task_id(TASK_ID)
                 .task_name(TASK_NAME)
                 .build();
